@@ -1,0 +1,136 @@
+# Atlas Knowledge Indexing Workflow
+#
+# Automatically indexes knowledge repository content when changes are pushed.
+# This workflow should be copied to your knowledge repository's .github/workflows/
+#
+# Setup:
+#   1. Copy this file to your knowledge repo: .github/workflows/index-knowledge.yml
+#   2. Set the following secrets in your knowledge repo:
+#      - ATLAS_DATABASE_URL: PostgreSQL connection string for vector database
+#      - OPENAI_API_KEY: API key for generating embeddings (if using OpenAI)
+#   3. Ensure the Atlas scripts are accessible (either bundled or cloned)
+
+name: Index Knowledge
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.pdf'
+      - 'uploads/**'
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      full_reindex:
+        description: 'Force full reindex (not incremental)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  ATLAS_DATABASE_URL: ${{ secrets.ATLAS_DATABASE_URL }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+jobs:
+  index:
+    name: Index Changed Files
+    runs-on: ubuntu-latest
+
+    # Only run on merged PRs, not closed without merging
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout knowledge repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit for diff
+
+      - name: Checkout Atlas
+        uses: actions/checkout@v4
+        with:
+          repository: jack-services/atlas
+          path: atlas
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary openai tiktoken
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          if [[ "${{ github.event.inputs.full_reindex }}" == "true" ]]; then
+            # Full reindex: get all indexable files
+            echo "mode=full" >> $GITHUB_OUTPUT
+            find . -type f \( -name "*.md" -o -name "*.txt" \) -not -path "./.git/*" -not -path "./atlas/*" > /tmp/files_to_index.txt
+          else
+            # Incremental: get only changed files
+            echo "mode=incremental" >> $GITHUB_OUTPUT
+            git diff --name-only --diff-filter=ACMR HEAD~1 HEAD | grep -E '\.(md|txt)$' > /tmp/files_to_index.txt || true
+          fi
+
+          # Count files
+          FILE_COUNT=$(wc -l < /tmp/files_to_index.txt | tr -d ' ')
+          echo "file_count=$FILE_COUNT" >> $GITHUB_OUTPUT
+
+          # Show files to be indexed
+          echo "Files to index ($FILE_COUNT):"
+          cat /tmp/files_to_index.txt
+
+      - name: Index files
+        if: steps.changed-files.outputs.file_count != '0'
+        run: |
+          chmod +x atlas/scripts/db/*.sh
+
+          INDEXED=0
+          FAILED=0
+
+          while IFS= read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "Indexing: $file"
+
+              # Use Atlas indexing pipeline
+              if atlas/scripts/db/index.sh --file "$file" --repo knowledge; then
+                INDEXED=$((INDEXED + 1))
+              else
+                echo "Failed to index: $file"
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done < /tmp/files_to_index.txt
+
+          echo "Indexing complete: $INDEXED succeeded, $FAILED failed"
+
+          # Fail if all files failed
+          if [[ $INDEXED -eq 0 ]] && [[ $FAILED -gt 0 ]]; then
+            exit 1
+          fi
+
+      - name: Skip notification
+        if: steps.changed-files.outputs.file_count == '0'
+        run: |
+          echo "No indexable files changed, skipping indexing."
+
+      - name: Report status
+        if: always()
+        run: |
+          MODE="${{ steps.changed-files.outputs.mode }}"
+          COUNT="${{ steps.changed-files.outputs.file_count }}"
+
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "::notice::Atlas indexing completed successfully. Mode: $MODE, Files: $COUNT"
+          else
+            echo "::error::Atlas indexing failed. Mode: $MODE, Files: $COUNT"
+          fi
