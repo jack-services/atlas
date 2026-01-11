@@ -1,113 +1,410 @@
 # Atlas - Company-Aware AI Agent Plugin
 
-> **Read this file first before making any changes to Atlas.**
+> **Read this file first before making any changes to Atlas or using Atlas commands.**
 
 ## Overview
 
 Atlas is a Claude Code plugin that connects AI agents to company knowledge repositories and product codebases. It enables autonomous planning and execution of work by providing context-aware AI assistance.
+
+## Quick Start
+
+1. Run `/atlas setup` to configure Atlas for your organization
+2. Use `/atlas plan "<goal>"` to break down work into GitHub issues
+3. Use `/atlas execute` to autonomously work through issues
 
 ## Project Structure
 
 ```
 atlas/
 ├── .claude-plugin/
-│   └── manifest.json       # Plugin metadata and configuration
-├── commands/               # Slash command implementations
-├── hooks/                  # Event hooks (pre/post command execution)
-├── scripts/                # Utility scripts for setup and maintenance
-├── CLAUDE.md               # This file - plugin instructions
-└── README.md               # Project overview and setup
+│   └── manifest.json         # Plugin metadata and commands
+├── commands/
+│   ├── setup/                # Interactive configuration wizard
+│   ├── plan/                 # Goal → GitHub issues breakdown
+│   ├── execute/              # Autonomous issue execution loop
+│   └── update-knowledge/     # Add documents to knowledge base
+├── hooks/                    # Event hooks (pre/post actions)
+├── scripts/
+│   ├── config-reader.sh      # Read ~/.atlas/config.yaml
+│   ├── db/                   # Database and indexing scripts
+│   ├── github/               # PR and issue management
+│   ├── knowledge/            # Knowledge base querying
+│   └── verify/               # Verification scripts
+├── CLAUDE.md                 # This file
+└── README.md                 # User-facing documentation
 ```
 
-## Plugin Architecture
+---
 
-Atlas follows the Claude Code plugin specification:
+## Configuration
 
-- **Commands**: Registered slash commands that extend Claude Code functionality
-- **Hooks**: Event handlers that run before/after specific actions
-- **Scripts**: Shell scripts for automation and setup tasks
+Atlas configuration is stored at `~/.atlas/config.yaml`.
 
-## Development Guidelines
+### Reading Configuration
 
-### Adding Commands
+```bash
+# Validate and display all config
+./scripts/config-reader.sh
 
-Commands are defined in the `commands/` directory. Each command should:
+# Read specific values
+./scripts/config-reader.sh knowledge_repo
+./scripts/config-reader.sh github_org
+./scripts/config-reader.sh product_repos
+./scripts/config-reader.sh vector_db.url
+```
 
-1. Have a clear, single purpose
-2. Include proper validation and error handling
-3. Follow the naming convention: `command-name.md` or `command-name/`
+### Configuration Keys
 
-### Adding Hooks
+| Key | Description | Required |
+|-----|-------------|----------|
+| `knowledge_repo` | Path to knowledge repository | Yes |
+| `github_org` | GitHub organization name | Yes |
+| `product_repos` | List of product repository paths | No |
+| `vector_db.url` | PostgreSQL connection URL for embeddings | No |
+| `verification.screenshots.urls` | URLs to screenshot for verification | No |
+| `verification.custom` | Custom verification steps | No |
 
-Hooks in the `hooks/` directory respond to Claude Code events:
+### Environment Variables
 
-1. Use descriptive names matching the event they handle
-2. Keep hooks lightweight and fast
-3. Handle errors gracefully to avoid blocking execution
+Environment variables in config are interpolated automatically:
+```yaml
+vector_db:
+  url: ${ATLAS_DATABASE_URL}
+```
 
-### Scripts
+---
 
-Utility scripts in `scripts/` should:
+## Available Commands
 
-1. Be executable (`chmod +x`)
-2. Include usage documentation at the top
-3. Follow shell scripting best practices
+### `/atlas setup`
+Interactive wizard to configure Atlas for your organization.
 
-## DO NOT
+**When to use:** First-time setup or reconfiguring Atlas.
 
-1. Commit sensitive data (API keys, credentials)
-2. Modify manifest.json structure without updating docs
-3. Create commands without proper error handling
+**What it does:**
+1. Prompts for GitHub organization
+2. Configures knowledge repository path
+3. Sets up product repository connections
+4. Optionally configures vector database
+5. Writes `~/.atlas/config.yaml`
 
-## DO
+### `/atlas plan "<goal>"`
+Transforms a high-level goal into actionable GitHub issues.
 
-1. Follow existing patterns in the codebase
-2. Test commands locally before committing
-3. Update CLAUDE.md when adding new functionality
-4. Write clear, concise code
+**When to use:** Starting new feature work, breaking down projects.
+
+**What it does:**
+1. Queries knowledge base for relevant context
+2. Analyzes product repositories for patterns
+3. Breaks goal into discrete tickets
+4. Presents plan for approval
+5. Creates GitHub issues when confirmed
+
+**Example:**
+```
+/atlas plan "Add user authentication with OAuth"
+```
+
+### `/atlas execute [--issue <number>] [--max-iterations <n>]`
+Ralph-style iterative execution loop for working through issues.
+
+**When to use:** Autonomous implementation of GitHub issues.
+
+**What it does:**
+1. Selects an issue (assigned to you or labeled `atlas`)
+2. Gathers knowledge and codebase context
+3. Iteratively implements the solution
+4. Runs verification (tests, build)
+5. Creates PR and updates issue
+6. Closes issue on success
+
+**Priority order for issue selection:**
+1. Issues assigned to current user
+2. Issues labeled `atlas` or `automation`
+3. Issues labeled `good-first-issue`
+
+### `/atlas update-knowledge <path-or-url>`
+Add new documents to the knowledge repository.
+
+**When to use:** Adding documentation, specs, or meeting notes.
+
+**What it does:**
+1. Validates the file or URL
+2. Copies to knowledge repo uploads/
+3. Extracts text content
+4. Indexes for semantic search
+5. Commits to knowledge repo
+
+**Supported formats:** `.md`, `.txt`, `.pdf`, `.csv`
+
+---
 
 ## Knowledge Retrieval
 
-Atlas can query company knowledge to provide context-aware assistance. Use the knowledge retrieval system when you need information about:
+### When to Query Knowledge Base
 
-- Company vision, values, and strategy
+Query the knowledge base when you need:
+- Company vision, values, strategy
 - Product specifications and roadmaps
 - Team processes and runbooks
 - Historical decisions and rationale
+- Coding standards and guidelines
 
-### How to Query Knowledge
-
-Run the query script to retrieve relevant context:
+### How to Query
 
 ```bash
 ./scripts/knowledge/query.sh "your question here"
 ```
 
-Options:
+**Options:**
 - `--limit <n>` - Number of results (default: 5)
 - `--threshold <f>` - Minimum similarity 0-1 (default: 0.7)
-- `--format <type>` - Output: context, json, plain (default: context)
+- `--format <type>` - Output format: `context`, `json`, `plain`
 
-### When to Query
+### Query vs Direct Load
 
-Query the knowledge base when:
-1. Planning features that should align with company strategy
-2. Making architectural decisions that have company-wide implications
-3. Writing documentation that references company standards
-4. Implementing features mentioned in product specifications
-5. Following processes defined in runbooks
+| Scenario | Approach |
+|----------|----------|
+| Need specific facts about a topic | Query with specific question |
+| Need broad context for planning | Query with topic keywords |
+| Know exact document location | Read file directly |
+| Need multiple related topics | Multiple queries in parallel |
 
-### Example Usage
+### Example Queries
 
 ```bash
-# Get company context for feature planning
-./scripts/knowledge/query.sh "what are our current priorities"
+# Strategic context
+./scripts/knowledge/query.sh "company priorities Q1" --limit 3
 
-# Find relevant processes
-./scripts/knowledge/query.sh "deployment process" --limit 3
+# Technical standards
+./scripts/knowledge/query.sh "API design guidelines" --format context
 
-# Get raw JSON for programmatic use
+# Process documentation
+./scripts/knowledge/query.sh "deployment process production" --limit 5
+
+# Programmatic use
 ./scripts/knowledge/query.sh "authentication" --format json
 ```
 
-The output includes source file references for traceability.
+---
+
+## Verification Requirements
+
+Before marking work complete, verification must pass.
+
+### Running Verification
+
+```bash
+./scripts/verify/verify.sh --repo /path/to/repo --format text
+```
+
+### Verification Steps
+
+| Step | Script | Required by Default |
+|------|--------|---------------------|
+| Tests | `run-tests.sh` | Yes |
+| Build | `run-build.sh` | Yes |
+| Screenshots | `screenshot.sh` | No (if configured) |
+| Custom | Defined in config | Configurable |
+
+### Verification Standards
+
+1. **Tests must pass** - All tests in the test suite must succeed
+2. **Build must succeed** - Project must compile/build without errors
+3. **No regressions** - Existing functionality must not break
+
+### Custom Verification
+
+Add custom steps in `~/.atlas/config.yaml`:
+
+```yaml
+verification:
+  screenshots:
+    urls:
+      - http://localhost:3000
+      - http://localhost:3000/dashboard
+  custom:
+    - name: lint
+      command: npm run lint
+      required: true
+    - name: e2e
+      command: npm run test:e2e
+      required: false
+```
+
+### Verification Output
+
+```
+=== Atlas Verification Report ===
+Repository: /path/to/repo
+
+Steps:
+  ✓ tests: All tests passed
+  ✓ build: Build succeeded
+  - screenshots: No screenshot URLs configured
+
+Overall: ✓ PASSED
+```
+
+---
+
+## GitHub Integration
+
+### Creating PRs
+
+```bash
+./scripts/github/create-pr.sh \
+  --repo owner/repo \
+  --issue 42 \
+  --verification-report .atlas/verification.json
+```
+
+### Updating Issues
+
+```bash
+./scripts/github/update-issue.sh \
+  --repo owner/repo \
+  --issue 42 \
+  --status completed \
+  --summary "Implemented feature X" \
+  --close
+```
+
+### Attaching Evidence
+
+```bash
+./scripts/github/attach-evidence.sh \
+  --repo owner/repo \
+  --pr 123 \
+  --verification-report .atlas/verification.json \
+  --screenshots-dir .atlas/screenshots
+```
+
+---
+
+## Error Handling
+
+### Common Errors and Solutions
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "Configuration file not found" | No config | Run `/atlas setup` |
+| "yq is required" | Missing dependency | Install: `brew install yq` |
+| "Key not found" | Invalid config key | Check config key name |
+| "No test runner detected" | Unknown project type | Add test script to package.json |
+
+### When Verification Fails
+
+1. **Tests fail**: Fix the failing tests, do not skip
+2. **Build fails**: Resolve compilation errors
+3. **Stuck for 3+ iterations**:
+   - Post blocker comment on issue
+   - Add `needs-human` label
+   - Move to next issue
+
+### Error Recovery
+
+If execution is interrupted:
+- State is saved to `.atlas/execution-state.json`
+- Resume by running `/atlas execute` again
+- Manual cleanup: delete `.atlas/execution-state.json`
+
+---
+
+## Development Guidelines
+
+### Adding Commands
+
+1. Create directory: `commands/command-name/`
+2. Add prompt file: `command-name.md`
+3. Register in `.claude-plugin/manifest.json`
+4. Update this file with documentation
+
+### Adding Scripts
+
+1. Create executable script in `scripts/`
+2. Add help with `-h|--help` flag
+3. Include usage docs at top of file
+4. Use `set -e` for error handling
+
+### Code Standards
+
+**DO:**
+- Follow existing patterns in codebase
+- Test commands locally before committing
+- Update CLAUDE.md for new functionality
+- Use config-reader for configuration access
+- Run verification before marking complete
+
+**DO NOT:**
+- Commit sensitive data (API keys, credentials)
+- Modify manifest.json without updating docs
+- Skip verification to close issues faster
+- Mark work complete without passing tests
+
+---
+
+## Execution Loop Best Practices
+
+### Before Starting
+
+1. Ensure config is valid: `./scripts/config-reader.sh`
+2. Verify database connection if using vector search
+3. Check GitHub authentication: `gh auth status`
+
+### During Execution
+
+1. Read issues carefully before starting
+2. Query knowledge base for context
+3. Make incremental changes
+4. Run verification frequently
+5. Update issue with progress
+
+### After Completion
+
+1. Verify all acceptance criteria are met
+2. Create PR with clear description
+3. Attach verification evidence
+4. Close issue with completion comment
+
+### Interrupting Execution
+
+Create stop file to gracefully exit:
+```bash
+touch .atlas/stop-execution
+```
+Execution will complete current iteration and save state.
+
+---
+
+## Troubleshooting
+
+### Debug Mode
+
+Set `ATLAS_DEBUG=1` for verbose output:
+```bash
+ATLAS_DEBUG=1 ./scripts/verify/verify.sh
+```
+
+### Checking Logs
+
+```bash
+# Recent execution
+tail -50 .atlas/execution.log
+
+# Verification output
+cat .atlas/verification.json
+```
+
+### Resetting State
+
+```bash
+# Clear execution state
+rm -f .atlas/execution-state.json
+
+# Clear screenshots
+rm -rf .atlas/screenshots
+
+# Full reset (keeps config)
+rm -rf .atlas/*.json .atlas/screenshots
+```
