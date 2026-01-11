@@ -19,6 +19,11 @@
       "name": "plan",
       "description": "Transform high-level goals into actionable GitHub issues",
       "path": "commands/plan/plan.md"
+    },
+    {
+      "name": "execute",
+      "description": "Iteratively work through GitHub issues with autonomous execution",
+      "path": "commands/execute/execute.md"
     }
   ],
   "hooks": [],
