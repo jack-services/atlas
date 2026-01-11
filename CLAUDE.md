@@ -190,46 +190,100 @@ Query the knowledge base when you need:
 
 ## Verification Requirements
 
-Before marking work complete, verification must pass.
+Before marking work complete, verification must pass. Atlas uses **prompt-driven verification** - the task defines what "done" means.
 
-### Running Verification
+### Prompt-Driven Verification
+
+Parse completion criteria from the task/issue description:
+
+```bash
+./scripts/verify/verify-criteria.sh --criteria issue-body.txt --repo /path/to/repo
+```
+
+Or with JSON criteria:
+
+```bash
+./scripts/verify/verify-criteria.sh --criteria '[{"type": "tests"}, {"type": "file_exists", "path": "output.pdf"}]'
+```
+
+### Criteria Format
+
+Include a verification section in task descriptions:
+
+```markdown
+## Verification
+- Command: npm test
+- File exists: output/report.pdf
+- Contains sections: Summary, Conclusion
+- Word count > 500
+```
+
+### Supported Criteria Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `command` | Run a command, check exit code 0 | `Command: npm test` |
+| `file_exists` | Check file exists | `File exists: dist/app.js` |
+| `sections` | Check document has sections | `Contains sections: Summary, Goals` |
+| `word_count` | Check document length | `Word count > 500` |
+| `tests` | Run test suite | `All tests pass` |
+| `build` | Run build | `Build succeeds` |
+
+### Example Verification Criteria
+
+**Web app:**
+```markdown
+## Verification
+- Command: pnpm test
+- Command: pnpm build
+- All tests pass
+```
+
+**iOS app:**
+```markdown
+## Verification
+- Command: xcodebuild test -scheme MyApp
+- All tests pass
+```
+
+**Strategy document:**
+```markdown
+## Verification
+- File exists: strategy/q1-2026.md
+- Contains sections: Executive Summary, Goals, Risks, Timeline
+- Word count > 500
+```
+
+**No explicit verification:**
+```markdown
+## Verification
+none
+```
+(Relies on completion promise)
+
+### Legacy Verification
+
+The original verification system is still available:
 
 ```bash
 ./scripts/verify/verify.sh --repo /path/to/repo --format text
 ```
 
-### Verification Steps
+This auto-detects tests/build for code projects.
 
-| Step | Script | Required by Default |
-|------|--------|---------------------|
-| Tests | `run-tests.sh` | Yes |
-| Build | `run-build.sh` | Yes |
-| Screenshots | `screenshot.sh` | No (if configured) |
-| Custom | Defined in config | Configurable |
+### Custom Verification in Config
 
-### Verification Standards
-
-1. **Tests must pass** - All tests in the test suite must succeed
-2. **Build must succeed** - Project must compile/build without errors
-3. **No regressions** - Existing functionality must not break
-
-### Custom Verification
-
-Add custom steps in `~/.atlas/config.yaml`:
+Add project-wide custom steps in `~/.atlas/config.yaml`:
 
 ```yaml
 verification:
   screenshots:
     urls:
       - http://localhost:3000
-      - http://localhost:3000/dashboard
   custom:
     - name: lint
       command: npm run lint
       required: true
-    - name: e2e
-      command: npm run test:e2e
-      required: false
 ```
 
 ### Verification Output
@@ -238,10 +292,10 @@ verification:
 === Atlas Verification Report ===
 Repository: /path/to/repo
 
-Steps:
-  ✓ tests: All tests passed
-  ✓ build: Build succeeded
-  - screenshots: No screenshot URLs configured
+Criteria:
+  ✓ command: npm test
+  ✓ file_exists: dist/app.js exists
+  ✓ word_count: 750 words (> 500)
 
 Overall: ✓ PASSED
 ```
