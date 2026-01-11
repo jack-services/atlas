@@ -9,6 +9,11 @@
       "name": "setup",
       "description": "Interactive wizard to configure Atlas for your organization",
       "path": "commands/setup/setup.md"
+    },
+    {
+      "name": "update-knowledge",
+      "description": "Add new files to the knowledge repository and index them",
+      "path": "commands/update-knowledge/update-knowledge.md"
     }
   ],
   "hooks": [],
