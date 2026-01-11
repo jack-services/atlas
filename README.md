@@ -32,25 +32,39 @@ Atlas connects Claude Code to your company's knowledge repositories and product 
 
 ### Install Atlas
 
-1. Clone this repository:
+**Option 1: Install from GitHub (Recommended)**
 
 ```bash
+# Add the Atlas marketplace
+claude plugin marketplace add jack-services/atlas
+
+# Install the plugin
+claude plugin install atlas
+
+# Restart Claude Code to load the plugin
+```
+
+**Option 2: Install from Local Clone**
+
+```bash
+# Clone the repository
 git clone https://github.com/jack-services/atlas.git
-cd atlas
+
+# Add as local marketplace
+claude plugin marketplace add /path/to/atlas
+
+# Install the plugin
+claude plugin install atlas
 ```
 
-2. Install the plugin in Claude Code:
-
-```bash
-claude plugin install ./atlas
-```
-
-3. Verify installation:
+**Verify Installation**
 
 ```bash
 claude plugin list
 # Should show: atlas v0.1.0
 ```
+
+After installation, restart Claude Code. You should see `/atlas` commands available.
 
 ## Quick Start
 

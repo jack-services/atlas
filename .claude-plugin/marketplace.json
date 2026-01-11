@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "atlas-marketplace",
+  "version": "1.0.0",
+  "description": "Atlas - Company-aware AI agent plugin for Claude Code",
+  "owner": {
+    "name": "Jack Services",
+    "email": "support@jack-services.com"
+  },
+  "plugins": [
+    {
+      "name": "atlas",
+      "description": "Company-aware AI agent plugin. Connect your knowledge repos and product codebases for autonomous planning and execution.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jack Services"
+      },
+      "source": "./plugins/atlas",
+      "category": "productivity"
+    }
+  ]
+}
