@@ -1,0 +1,10 @@
+{
+  "name": "atlas",
+  "version": "0.1.0",
+  "description": "Company-aware AI agent plugin for Claude Code. Connect your knowledge repos and product codebases for autonomous planning and execution.",
+  "author": "Jack Services",
+  "repository": "https://github.com/jack-services/atlas",
+  "commands": [],
+  "hooks": [],
+  "settings": {}
+}
