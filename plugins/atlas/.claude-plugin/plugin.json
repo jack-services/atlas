@@ -2,30 +2,8 @@
   "name": "atlas",
   "version": "0.1.0",
   "description": "Company-aware AI agent plugin for Claude Code. Connect your knowledge repos and product codebases for autonomous planning and execution.",
-  "author": "Jack Services",
-  "repository": "https://github.com/jack-services/atlas",
-  "commands": [
-    {
-      "name": "setup",
-      "description": "Interactive wizard to configure Atlas for your organization",
-      "path": "commands/setup/setup.md"
-    },
-    {
-      "name": "update-knowledge",
-      "description": "Add new files to the knowledge repository and index them",
-      "path": "commands/update-knowledge/update-knowledge.md"
-    },
-    {
-      "name": "plan",
-      "description": "Transform high-level goals into actionable GitHub issues",
-      "path": "commands/plan/plan.md"
-    },
-    {
-      "name": "execute",
-      "description": "Iteratively work through GitHub issues with autonomous execution",
-      "path": "commands/execute/execute.md"
-    }
-  ],
-  "hooks": [],
-  "settings": {}
+  "author": {
+    "name": "Jack Services",
+    "email": "support@jack-services.com"
+  }
 }
