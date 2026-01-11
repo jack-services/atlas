@@ -65,3 +65,49 @@ Utility scripts in `scripts/` should:
 2. Test commands locally before committing
 3. Update CLAUDE.md when adding new functionality
 4. Write clear, concise code
+
+## Knowledge Retrieval
+
+Atlas can query company knowledge to provide context-aware assistance. Use the knowledge retrieval system when you need information about:
+
+- Company vision, values, and strategy
+- Product specifications and roadmaps
+- Team processes and runbooks
+- Historical decisions and rationale
+
+### How to Query Knowledge
+
+Run the query script to retrieve relevant context:
+
+```bash
+./scripts/knowledge/query.sh "your question here"
+```
+
+Options:
+- `--limit <n>` - Number of results (default: 5)
+- `--threshold <f>` - Minimum similarity 0-1 (default: 0.7)
+- `--format <type>` - Output: context, json, plain (default: context)
+
+### When to Query
+
+Query the knowledge base when:
+1. Planning features that should align with company strategy
+2. Making architectural decisions that have company-wide implications
+3. Writing documentation that references company standards
+4. Implementing features mentioned in product specifications
+5. Following processes defined in runbooks
+
+### Example Usage
+
+```bash
+# Get company context for feature planning
+./scripts/knowledge/query.sh "what are our current priorities"
+
+# Find relevant processes
+./scripts/knowledge/query.sh "deployment process" --limit 3
+
+# Get raw JSON for programmatic use
+./scripts/knowledge/query.sh "authentication" --format json
+```
+
+The output includes source file references for traceability.
