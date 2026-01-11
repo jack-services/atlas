@@ -14,6 +14,11 @@
       "name": "update-knowledge",
       "description": "Add new files to the knowledge repository and index them",
       "path": "commands/update-knowledge/update-knowledge.md"
+    },
+    {
+      "name": "plan",
+      "description": "Transform high-level goals into actionable GitHub issues",
+      "path": "commands/plan/plan.md"
     }
   ],
   "hooks": [],
