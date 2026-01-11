@@ -1,0 +1,29 @@
+# Atlas Configuration File
+# Copy this file to ~/.atlas/config.yaml and customize for your environment
+#
+# Environment variables can be interpolated using ${VAR_NAME} syntax
+# Example: ${ATLAS_DATABASE_URL} will be replaced with the value of ATLAS_DATABASE_URL
+
+# Path to your company knowledge repository
+# This repo contains documentation, runbooks, and other knowledge sources
+knowledge_repo: ~/repos/company-knowledge
+
+# List of product repositories Atlas should be aware of
+# Atlas will use these for context when planning and executing work
+product_repos:
+  - ~/repos/main-app
+  - ~/repos/api-service
+  - ~/repos/frontend
+
+# GitHub organization for creating issues, PRs, etc.
+github_org: your-org
+
+# Vector database configuration for semantic search
+# Supports PostgreSQL with pgvector extension
+vector_db:
+  # Connection string - use environment variable for sensitive data
+  url: ${ATLAS_DATABASE_URL}
+  # Table name for storing embeddings
+  table: atlas_embeddings
+  # Embedding dimensions (default: 1536 for OpenAI embeddings)
+  dimensions: 1536
