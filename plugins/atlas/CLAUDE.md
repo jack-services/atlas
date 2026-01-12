@@ -169,6 +169,28 @@ Atlas Setup Check
 Status: READY
 ```
 
+### `/atlas search "<query>"`
+Search the knowledge base for relevant information.
+
+**When to use:** Finding specific information, gathering context for planning.
+
+**What it does:**
+1. Verifies database is configured
+2. Executes semantic search using embeddings
+3. Returns ranked results with similarity scores
+4. Displays source file paths for attribution
+
+**Options:**
+- `--limit N` - Number of results (default: 5)
+- `--threshold 0.X` - Minimum similarity (default: 0.7)
+- `--format context|json|plain` - Output format
+
+**Example:**
+```
+/atlas search "Q4 revenue metrics"
+/atlas search "authentication" --limit 10 --format json
+```
+
 ---
 
 ## Knowledge Retrieval

@@ -21,6 +21,7 @@ Atlas connects Claude Code to your company's knowledge repositories and product 
 | `/atlas:plan "<goal>"` | Break down a goal into GitHub issues |
 | `/atlas:execute` | Autonomously work through issues |
 | `/atlas:update-knowledge <path>` | Add documents to knowledge base |
+| `/atlas:search "<query>"` | Search knowledge base |
 | `/atlas:help` | Show this help message |
 
 ### Quick Start
