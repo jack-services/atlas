@@ -1,57 +1,32 @@
 # Atlas Execute Command
 
-Autonomously work on tasks using Ralph Wiggum's iteration loop.
+Search for and work through GitHub issues using Ralph Wiggum's iteration loop.
 
 ## Usage
 
 ```
-/atlas:execute "<task description>"           # Work on described task
-/atlas:execute --issue <number>               # Work on specific GitHub issue
-/atlas:execute                                # Pick next available issue
-/atlas:execute "<task>" --max-iterations <n>  # Limit iterations
+/atlas:execute "<search query>"              # Search issues and work on matches
+/atlas:execute --issue <number>              # Work on specific issue
+/atlas:execute                               # Pick next available issue
+/atlas:execute "<query>" --max-iterations <n>  # Limit iterations
 ```
 
 ## Examples
 
 ```
-/atlas:execute "Add a dark mode toggle to the settings page"
-/atlas:execute "Refactor the authentication module to use JWT"
-/atlas:execute "Fix the bug where users can't reset their password"
-/atlas:execute --issue 42
-/atlas:execute --max-iterations 10
+/atlas:execute "authentication"              # Find and work on auth-related issues
+/atlas:execute "fix login bug"               # Search for login bug issues
+/atlas:execute "dark mode"                   # Find dark mode issues
+/atlas:execute --issue 42                    # Work on specific issue #42
+/atlas:execute                               # Pick next assigned/labeled issue
 ```
 
-## Execution Modes
+## How It Works
 
-Atlas supports two execution modes:
-
-### Mode 1: Direct Task Description (Recommended)
-
-When you provide a task description in quotes, Atlas works on exactly what you describe:
-
-```
-/atlas:execute "Add user avatar upload to the profile page"
-```
-
-This mode:
-- Uses your description as the primary task
-- Gathers relevant knowledge context
-- Invokes Ralph Wiggum to iterate until complete
-- Creates a PR when done (if in a git repo)
-
-### Mode 2: GitHub Issue-Based
-
-When you use `--issue` or provide no arguments, Atlas works from GitHub issues:
-
-```
-/atlas:execute --issue 42    # Specific issue
-/atlas:execute               # Next available issue
-```
-
-Issue selection priority (when no issue specified):
-1. Issues assigned to current user
-2. Issues labeled with `atlas` or `automation`
-3. Issues labeled with `good-first-issue`
+When you provide a search query, Atlas:
+1. Searches open GitHub issues matching your description
+2. Presents matching issues for you to select
+3. Works through selected issues using Ralph Wiggum's loop
 
 ---
 
@@ -65,96 +40,123 @@ When this command is invoked, follow these steps:
 # Get GitHub org from config
 GITHUB_ORG=$(./scripts/config-reader.sh github_org)
 
-# Get product repos
-PRODUCT_REPOS=$(./scripts/config-reader.sh product_repos)
+# Get default repo (or use current directory's repo)
+DEFAULT_REPO=$(./scripts/config-reader.sh default_repo 2>/dev/null || basename $(pwd))
 ```
 
 If config doesn't exist, guide user to run `/atlas:setup` first.
 
-### Step 2: Determine Task Source
+### Step 2: Determine Execution Mode
 
-**If task description provided** (e.g., `"Add dark mode"`):
-- Use the description as the task
-- Set `TASK_MODE=direct`
-- Set `TASK_DESCRIPTION` to the provided text
+**If search query provided** (e.g., `"authentication"`):
+- Set `MODE=search`
+- Search for matching issues
 
-**If `--issue` provided**:
-- Fetch that specific issue
-- Set `TASK_MODE=issue`
-- Extract task from issue body
+**If `--issue <number>` provided**:
+- Set `MODE=specific`
+- Fetch that exact issue
 
 **If no arguments**:
-- Query for next available issue
-- Set `TASK_MODE=issue`
-- Extract task from issue body
+- Set `MODE=auto`
+- Get next available issue by priority
+
+### Step 3: Search for Issues (Search Mode)
+
+When a search query is provided, search GitHub issues:
 
 ```bash
-# For issue mode
-gh issue view {number} --repo "$GITHUB_ORG/{repo}" --json number,title,body,labels,assignees
+# Search open issues matching the query
+gh issue list \
+  --repo "$GITHUB_ORG/$REPO" \
+  --state open \
+  --search "$SEARCH_QUERY" \
+  --json number,title,body,labels,assignees \
+  --limit 10
 ```
 
-### Step 3: Gather Context
+**Present results to user:**
 
-#### 3a. Task Context
-For direct mode:
-- Parse the task description for key requirements
-- Identify any mentioned files, features, or components
+```
+Found 5 issues matching "authentication":
 
-For issue mode:
-- Parse the issue body for requirements
-- Extract acceptance criteria (checkboxes)
-- Extract verification section
+1. #42 - Add OAuth2 authentication flow
+   Labels: feature, auth
 
-#### 3b. Knowledge Context
+2. #38 - Fix session timeout on login
+   Labels: bug, auth
+
+3. #35 - Implement password reset endpoint
+   Labels: feature, auth
+
+4. #29 - Add rate limiting to auth endpoints
+   Labels: security, auth
+
+5. #15 - Update auth documentation
+   Labels: docs
+
+Which issue(s) would you like to work on? (Enter numbers, e.g., "1" or "1,2,3")
+```
+
+Use the AskUserQuestion tool to let the user select which issues to work on.
+
+**If no issues match:**
+```
+No open issues found matching "authentication".
+
+Suggestions:
+- Try different search terms
+- Check if issues exist: gh issue list --repo org/repo
+- Use /atlas:execute --issue <number> for a specific issue
+```
+
+### Step 4: Select Issue (Auto Mode)
+
+When no query is provided, select by priority:
+
+```bash
+# Priority 1: Assigned to current user
+gh issue list --repo "$GITHUB_ORG/$REPO" --assignee @me --state open --limit 5
+
+# Priority 2: Labeled for atlas automation
+gh issue list --repo "$GITHUB_ORG/$REPO" --label "atlas" --state open --limit 5
+
+# Priority 3: Good first issues
+gh issue list --repo "$GITHUB_ORG/$REPO" --label "good-first-issue" --state open --limit 5
+```
+
+### Step 5: Gather Context for Selected Issue
+
+Once an issue is selected:
+
+#### 5a. Issue Context
+Parse the issue body for:
+- Description and requirements
+- Acceptance criteria (checkboxes)
+- Verification section (what "done" means)
+- Referenced files or areas
+- Related issues or PRs
+
+#### 5b. Knowledge Context
 Query the knowledge base for relevant information:
 
 ```bash
-# Query based on task keywords
-./scripts/knowledge/query.sh "{task keywords}" --limit 5 --format context
+# Query based on issue title and keywords
+./scripts/knowledge/query.sh "{issue title}" --limit 5 --format context
 
-# Get any company-specific guidelines
-./scripts/knowledge/query.sh "coding standards guidelines" --limit 3 --format context
+# Get coding guidelines
+./scripts/knowledge/query.sh "coding standards" --limit 3 --format context
 ```
 
-#### 3c. Codebase Context
-For each relevant product repo:
-1. Read README and understand project structure
-2. Identify files relevant to the task
-3. Find similar implementations for reference
+#### 5c. Codebase Context
+For relevant product repos:
+1. Read README and project structure
+2. Identify files mentioned in the issue
+3. Find similar implementations
 4. Note testing patterns
 
-### Step 4: Construct Ralph Loop Prompt
+### Step 6: Construct Ralph Loop Prompt
 
-Build a comprehensive prompt that includes all gathered context.
-
-**For direct task mode:**
-
-```
-Work on the following task:
-
-## Task
-{task description}
-
-## Knowledge Context
-{knowledge query results}
-
-## Codebase Context
-{relevant files and patterns}
-
-## Verification
-{infer from task or use defaults: tests pass, build succeeds}
-
-## Instructions
-1. Implement the changes described in the task
-2. Follow existing patterns in the codebase
-3. Write tests if applicable
-4. Run verification to ensure completion
-5. Create a PR when done
-
-Completion criteria: The task is fully implemented and verified.
-```
-
-**For issue mode:**
+Build a comprehensive prompt with all context:
 
 ```
 Work on GitHub issue #{number}: {title}
@@ -181,46 +183,28 @@ Work on GitHub issue #{number}: {title}
 When complete, close the issue with: gh issue close {number}
 ```
 
-### Step 5: Invoke Ralph Wiggum Loop
+### Step 7: Invoke Ralph Wiggum Loop
 
-Use the Skill tool to invoke Ralph Wiggum with the constructed prompt:
+Use the Skill tool to invoke Ralph Wiggum:
 
-**For direct task mode:**
-```
-/ralph-wiggum:ralph-loop "{constructed_prompt}" --max-iterations {max_iterations} --completion-promise "Task complete: {summary of task}"
-```
-
-**For issue mode:**
 ```
 /ralph-wiggum:ralph-loop "{constructed_prompt}" --max-iterations {max_iterations} --completion-promise "Issue #{number} is closed"
 ```
 
-**IMPORTANT**: You MUST use the Skill tool to invoke `/ralph-wiggum:ralph-loop`. Do not attempt to implement your own iteration loop.
+**IMPORTANT**: You MUST use the Skill tool to invoke `/ralph-wiggum:ralph-loop`. Do not implement your own iteration loop.
 
-Example invocations:
-
+Example:
 ```
-# Direct task
 Skill: ralph-wiggum:ralph-loop
-Args: Work on task: Add dark mode toggle... --max-iterations 20 --completion-promise "Task complete: dark mode toggle added"
-
-# Issue-based
-Skill: ralph-wiggum:ralph-loop
-Args: Work on issue #42: Add user authentication... --max-iterations 20 --completion-promise "Issue #42 is closed"
+Args: Work on issue #42: Add OAuth2 authentication... --max-iterations 20 --completion-promise "Issue #42 is closed"
 ```
 
-### Step 6: Post-Execution
+### Step 8: Post-Execution
 
-**For direct task mode:**
-- Summarize what was accomplished
-- List files changed
-- Provide PR link if created
-
-**For issue mode:**
-Post completion comment and close:
+After Ralph completes (issue closed), post a summary:
 
 ```bash
-gh issue comment {number} --repo "$GITHUB_ORG/{repo}" --body "## ✅ Atlas Execution Complete
+gh issue comment {number} --repo "$GITHUB_ORG/$REPO" --body "## ✅ Atlas Execution Complete
 
 ### Summary
 {what was accomplished}
@@ -233,28 +217,42 @@ gh issue comment {number} --repo "$GITHUB_ORG/{repo}" --body "## ✅ Atlas Execu
 
 ---
 *Completed via Atlas + Ralph Wiggum*"
-
-gh issue close {number}
 ```
+
+### Step 9: Continue to Next Issue (if multiple selected)
+
+If user selected multiple issues (e.g., "1,2,3"):
+1. After completing first issue, move to next
+2. Repeat steps 5-8 for each issue
+3. Report final summary when all complete
+
+---
 
 ## Error Handling
 
-### Task Unclear
-If the task description is too vague, ask for clarification before starting.
+### No Matching Issues
+If search returns no results:
+- Suggest alternative search terms
+- Offer to list all open issues
+- Suggest creating a new issue
 
 ### Issue Not Found
-If the specified issue doesn't exist, inform the user and exit.
+If `--issue <number>` doesn't exist:
+- Inform user and exit
+- Suggest searching instead
 
-### No Issues Available
-If no issues match the selection criteria, inform the user:
-- Suggest using direct task mode instead
-- Or create issues with `atlas` label
-- Or assign existing issues to themselves
+### No Issues Available (Auto Mode)
+If no assigned or labeled issues exist:
+- Inform user
+- Suggest using search mode
+- Suggest creating issues with `atlas` label
 
 ### Ralph Loop Exits Early
-If Ralph exits without completing:
+If Ralph exits without closing the issue:
 1. Check what was accomplished
-2. Either resume with the same command or investigate blockers
+2. Either resume with `/atlas:execute --issue {number}` or investigate blockers
+
+---
 
 ## Configuration
 
@@ -262,6 +260,7 @@ Uses settings from `~/.atlas/config.yaml`:
 
 ```yaml
 github_org: your-org
+default_repo: main-app
 product_repos:
   - ~/repos/main-app
 execution:
@@ -270,14 +269,14 @@ execution:
 
 ## Best Practices
 
-1. **Be Specific**: Clear task descriptions yield better results
-2. **Include Verification**: Mention how to verify completion (e.g., "tests should pass")
-3. **Reasonable Scope**: One feature/fix per execution
-4. **Set Limits**: Use `--max-iterations` to prevent runaway execution
+1. **Be Descriptive**: Search queries like "fix login" work better than "bug"
+2. **Use Labels**: Label issues with `atlas` for easy auto-selection
+3. **Clear Verification**: Issues with `## Verification` sections work best
+4. **Reasonable Scope**: One issue at a time for complex work
 
 ## Dependency
 
-This command requires the `ralph-wiggum` plugin to be installed and enabled.
+This command requires the `ralph-wiggum` plugin:
 
 ```bash
 claude plugin install ralph-wiggum@claude-code-plugins
