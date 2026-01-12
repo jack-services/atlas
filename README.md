@@ -32,19 +32,26 @@ Atlas connects Claude Code to your company's knowledge repositories and product 
 
 ### Install Atlas
 
-**Option 1: Install from GitHub (Recommended)**
-
 ```bash
-# Add the Atlas marketplace
+# Step 1: Add the Atlas marketplace
 claude plugin marketplace add jack-services/atlas
 
-# Install the plugin
-claude plugin install atlas
+# Step 2: Install the plugin
+claude plugin install atlas@atlas-marketplace
 
-# Restart Claude Code to load the plugin
+# Step 3: Restart Claude Code to load the plugin
 ```
 
-**Option 2: Install from Local Clone**
+**Verify Installation**
+
+After restarting Claude Code, the `/atlas:*` commands will be available:
+- `/atlas:setup`
+- `/atlas:plan`
+- `/atlas:execute`
+- `/atlas:update-knowledge`
+- `/atlas:help`
+
+**Install from Local Clone (for development)**
 
 ```bash
 # Clone the repository
@@ -54,17 +61,8 @@ git clone https://github.com/jack-services/atlas.git
 claude plugin marketplace add /path/to/atlas
 
 # Install the plugin
-claude plugin install atlas
+claude plugin install atlas@atlas-marketplace
 ```
-
-**Verify Installation**
-
-```bash
-claude plugin list
-# Should show: atlas v0.1.0
-```
-
-After installation, restart Claude Code. You should see `/atlas` commands available.
 
 ## Quick Start
 
@@ -72,8 +70,8 @@ After installation, restart Claude Code. You should see `/atlas` commands availa
 
 Run the setup wizard:
 
-```bash
-/atlas setup
+```
+/atlas:setup
 ```
 
 The wizard will prompt you for:
@@ -86,17 +84,17 @@ The wizard will prompt you for:
 
 If you have existing documentation:
 
-```bash
-/atlas update-knowledge ~/docs/company-handbook.md
-/atlas update-knowledge ~/docs/api-spec.pdf
+```
+/atlas:update-knowledge ~/docs/company-handbook.md
+/atlas:update-knowledge ~/docs/api-spec.pdf
 ```
 
 ### Step 3: Plan Work
 
 Transform goals into actionable GitHub issues:
 
-```bash
-/atlas plan "Add user authentication with OAuth"
+```
+/atlas:plan "Add user authentication with OAuth"
 ```
 
 Atlas will:
@@ -109,8 +107,8 @@ Atlas will:
 
 Work through issues autonomously:
 
-```bash
-/atlas execute
+```
+/atlas:execute
 ```
 
 Atlas will:
@@ -122,24 +120,24 @@ Atlas will:
 
 ## Commands
 
-### `/atlas setup`
+### `/atlas:setup`
 
 Interactive configuration wizard.
 
-```bash
-/atlas setup
+```
+/atlas:setup
 ```
 
 Creates `~/.atlas/config.yaml` with your settings.
 
-### `/atlas plan "<goal>"`
+### `/atlas:plan "<goal>"`
 
 Break down a goal into GitHub issues.
 
-```bash
-/atlas plan "Implement dark mode for the dashboard"
-/atlas plan "Add rate limiting to the API"
-/atlas plan "Refactor authentication to use JWT"
+```
+/atlas:plan "Implement dark mode for the dashboard"
+/atlas:plan "Add rate limiting to the API"
+/atlas:plan "Refactor authentication to use JWT"
 ```
 
 **Options:**
@@ -147,14 +145,14 @@ Break down a goal into GitHub issues.
 - Links issues with dependencies
 - Includes acceptance criteria
 
-### `/atlas execute`
+### `/atlas:execute`
 
 Autonomously work through issues.
 
-```bash
-/atlas execute                    # Pick next issue automatically
-/atlas execute --issue 42         # Work on specific issue
-/atlas execute --max-iterations 10  # Limit iterations
+```
+/atlas:execute                    # Pick next issue automatically
+/atlas:execute --issue 42         # Work on specific issue
+/atlas:execute --max-iterations 10  # Limit iterations
 ```
 
 **Issue selection priority:**
@@ -162,17 +160,25 @@ Autonomously work through issues.
 2. Issues labeled `atlas` or `automation`
 3. Issues labeled `good-first-issue`
 
-### `/atlas update-knowledge <path>`
+### `/atlas:update-knowledge <path>`
 
 Add documents to the knowledge base.
 
-```bash
-/atlas update-knowledge ./docs/spec.md
-/atlas update-knowledge ~/Downloads/meeting-notes.pdf
-/atlas update-knowledge https://docs.google.com/document/d/...
+```
+/atlas:update-knowledge ./docs/spec.md
+/atlas:update-knowledge ~/Downloads/meeting-notes.pdf
+/atlas:update-knowledge https://docs.google.com/document/d/...
 ```
 
 **Supported formats:** Markdown, Text, PDF, CSV
+
+### `/atlas:help`
+
+Display available commands and usage information.
+
+```
+/atlas:help
+```
 
 ## Configuration
 
@@ -239,8 +245,8 @@ vector_db:
 
 Run the setup wizard:
 
-```bash
-/atlas setup
+```
+/atlas:setup
 ```
 
 Or manually create `~/.atlas/config.yaml`.
@@ -317,20 +323,26 @@ Atlas will complete the current iteration and exit.
 ```
 atlas/
 ├── .claude-plugin/
-│   └── manifest.json         # Plugin metadata
-├── commands/
-│   ├── setup/                # Configuration wizard
-│   ├── plan/                 # Goal → issues breakdown
-│   ├── execute/              # Autonomous execution loop
-│   └── update-knowledge/     # Knowledge ingestion
-├── scripts/
-│   ├── config-reader.sh      # Config management
-│   ├── db/                   # Database scripts
-│   ├── github/               # PR/issue management
-│   ├── knowledge/            # Knowledge querying
-│   └── verify/               # Verification scripts
-├── hooks/                    # Event hooks
-├── CLAUDE.md                 # Agent instructions
+│   └── marketplace.json      # Marketplace metadata
+├── plugins/
+│   └── atlas/
+│       ├── .claude-plugin/
+│       │   └── plugin.json   # Plugin metadata
+│       ├── commands/
+│       │   ├── setup.md      # Configuration wizard
+│       │   ├── plan.md       # Goal → issues breakdown
+│       │   ├── execute.md    # Autonomous execution loop
+│       │   ├── update-knowledge.md  # Knowledge ingestion
+│       │   └── help.md       # Help command
+│       ├── scripts/
+│       │   ├── config-reader.sh      # Config management
+│       │   ├── db/                   # Database scripts
+│       │   ├── github/               # PR/issue management
+│       │   ├── knowledge/            # Knowledge querying
+│       │   └── verify/               # Verification scripts
+│       ├── hooks/            # Event hooks
+│       └── CLAUDE.md         # Agent instructions
+├── CLAUDE.md                 # Project instructions
 └── README.md                 # This file
 ```
 
@@ -356,10 +368,9 @@ We welcome contributions! Here's how to get started:
 
 ### Adding Commands
 
-1. Create directory: `commands/your-command/`
-2. Add prompt file: `your-command.md`
-3. Register in `.claude-plugin/manifest.json`
-4. Document in CLAUDE.md and README.md
+1. Create file: `plugins/atlas/commands/your-command.md`
+2. Document in CLAUDE.md and README.md
+3. Commands are auto-discovered by filename (e.g., `foo.md` → `/atlas:foo`)
 
 ### Adding Scripts
 
