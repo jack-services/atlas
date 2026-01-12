@@ -8,9 +8,11 @@ Atlas is a Claude Code plugin that connects AI agents to company knowledge repos
 
 ## Quick Start
 
-1. Run `/atlas setup` to configure Atlas for your organization
-2. Use `/atlas plan "<goal>"` to break down work into GitHub issues
-3. Use `/atlas execute` to autonomously work through issues
+1. Run `/atlas:setup` to configure Atlas for your organization
+2. Use `/atlas:plan "<goal>"` to break down work into GitHub issues
+3. Use `/atlas:execute "<task>"` to autonomously work on any task
+
+**Dependency:** `/atlas:execute` requires the `ralph-wiggum` plugin for iteration.
 
 ## Project Structure
 
@@ -105,20 +107,34 @@ Transforms a high-level goal into actionable GitHub issues.
 /atlas plan "Add user authentication with OAuth"
 ```
 
-### `/atlas execute [--issue <number>] [--max-iterations <n>]`
-Ralph-style iterative execution loop for working through issues.
+### `/atlas execute "<task>" [--issue <number>] [--max-iterations <n>]`
+Autonomous task execution powered by Ralph Wiggum's iteration loop.
 
-**When to use:** Autonomous implementation of GitHub issues.
+**When to use:** Working on any task - either described directly or from GitHub issues.
+
+**Two execution modes:**
+
+**Mode 1: Direct Task Description (Recommended)**
+```
+/atlas:execute "Add a dark mode toggle to settings"
+/atlas:execute "Fix the login timeout bug"
+```
+
+**Mode 2: GitHub Issue-Based**
+```
+/atlas:execute --issue 42    # Specific issue
+/atlas:execute               # Next available issue
+```
 
 **What it does:**
-1. Selects an issue (assigned to you or labeled `atlas`)
-2. Gathers knowledge and codebase context
-3. Iteratively implements the solution
-4. Runs verification (tests, build)
-5. Creates PR and updates issue
-6. Closes issue on success
+1. Gathers knowledge and codebase context for the task
+2. Invokes `/ralph-wiggum:ralph-loop` with full context
+3. Ralph iterates until verification passes
+4. Creates PR and closes issue (if issue-based)
 
-**Priority order for issue selection:**
+**Dependency:** Requires the `ralph-wiggum` plugin to be installed.
+
+**Priority order for issue selection (when no task/issue specified):**
 1. Issues assigned to current user
 2. Issues labeled `atlas` or `automation`
 3. Issues labeled `good-first-issue`

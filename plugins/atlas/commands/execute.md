@@ -1,20 +1,59 @@
 # Atlas Execute Command
 
-Ralph-style iterative execution loop for autonomously working through GitHub issues.
+Autonomously work on tasks using Ralph Wiggum's iteration loop.
 
 ## Usage
 
 ```
-/atlas execute [--issue <number>] [--max-iterations <n>]
+/atlas:execute "<task description>"           # Work on described task
+/atlas:execute --issue <number>               # Work on specific GitHub issue
+/atlas:execute                                # Pick next available issue
+/atlas:execute "<task>" --max-iterations <n>  # Limit iterations
 ```
 
 ## Examples
 
 ```
-/atlas execute                          # Pick next assigned issue
-/atlas execute --issue 42               # Work on specific issue
-/atlas execute --max-iterations 10      # Limit iteration count
+/atlas:execute "Add a dark mode toggle to the settings page"
+/atlas:execute "Refactor the authentication module to use JWT"
+/atlas:execute "Fix the bug where users can't reset their password"
+/atlas:execute --issue 42
+/atlas:execute --max-iterations 10
 ```
+
+## Execution Modes
+
+Atlas supports two execution modes:
+
+### Mode 1: Direct Task Description (Recommended)
+
+When you provide a task description in quotes, Atlas works on exactly what you describe:
+
+```
+/atlas:execute "Add user avatar upload to the profile page"
+```
+
+This mode:
+- Uses your description as the primary task
+- Gathers relevant knowledge context
+- Invokes Ralph Wiggum to iterate until complete
+- Creates a PR when done (if in a git repo)
+
+### Mode 2: GitHub Issue-Based
+
+When you use `--issue` or provide no arguments, Atlas works from GitHub issues:
+
+```
+/atlas:execute --issue 42    # Specific issue
+/atlas:execute               # Next available issue
+```
+
+Issue selection priority (when no issue specified):
+1. Issues assigned to current user
+2. Issues labeled with `atlas` or `automation`
+3. Issues labeled with `good-first-issue`
+
+---
 
 ## Workflow
 
@@ -30,46 +69,48 @@ GITHUB_ORG=$(./scripts/config-reader.sh github_org)
 PRODUCT_REPOS=$(./scripts/config-reader.sh product_repos)
 ```
 
-If config doesn't exist, guide user to run `/atlas setup` first.
+If config doesn't exist, guide user to run `/atlas:setup` first.
 
-### Step 2: Select Issue to Work On
+### Step 2: Determine Task Source
 
-If `--issue` is provided, fetch that specific issue:
+**If task description provided** (e.g., `"Add dark mode"`):
+- Use the description as the task
+- Set `TASK_MODE=direct`
+- Set `TASK_DESCRIPTION` to the provided text
+
+**If `--issue` provided**:
+- Fetch that specific issue
+- Set `TASK_MODE=issue`
+- Extract task from issue body
+
+**If no arguments**:
+- Query for next available issue
+- Set `TASK_MODE=issue`
+- Extract task from issue body
 
 ```bash
+# For issue mode
 gh issue view {number} --repo "$GITHUB_ORG/{repo}" --json number,title,body,labels,assignees
 ```
 
-Otherwise, query for the next available issue:
-
-```bash
-# Get assigned issues first
-gh issue list --repo "$GITHUB_ORG/{repo}" --assignee @me --state open --json number,title,labels --limit 10
-
-# If no assigned issues, get issues labeled for atlas
-gh issue list --repo "$GITHUB_ORG/{repo}" --label "atlas" --state open --json number,title,labels --limit 10
-```
-
-Priority order for issue selection:
-1. Issues assigned to current user
-2. Issues labeled with `atlas` or `automation`
-3. Issues labeled with `good-first-issue`
-
 ### Step 3: Gather Context
 
-#### 3a. Issue Context
-Parse the issue body for:
-- Description and requirements
-- Acceptance criteria (checkboxes)
-- Referenced files or areas
-- Related issues or PRs
+#### 3a. Task Context
+For direct mode:
+- Parse the task description for key requirements
+- Identify any mentioned files, features, or components
+
+For issue mode:
+- Parse the issue body for requirements
+- Extract acceptance criteria (checkboxes)
+- Extract verification section
 
 #### 3b. Knowledge Context
 Query the knowledge base for relevant information:
 
 ```bash
-# Query based on issue title and description keywords
-./scripts/knowledge/query.sh "{issue title}" --limit 5 --format context
+# Query based on task keywords
+./scripts/knowledge/query.sh "{task keywords}" --limit 5 --format context
 
 # Get any company-specific guidelines
 ./scripts/knowledge/query.sh "coding standards guidelines" --limit 3 --format context
@@ -78,128 +119,105 @@ Query the knowledge base for relevant information:
 #### 3c. Codebase Context
 For each relevant product repo:
 1. Read README and understand project structure
-2. Identify files mentioned in the issue
+2. Identify files relevant to the task
 3. Find similar implementations for reference
 4. Note testing patterns
 
-### Step 4: Create Execution Plan
+### Step 4: Construct Ralph Loop Prompt
 
-Based on gathered context, create a plan:
+Build a comprehensive prompt that includes all gathered context.
 
-1. List specific files to create or modify
-2. Identify tests to write or update
-3. Note any dependencies or blockers
-4. Define verification steps
-
-Post initial plan as issue comment:
-
-```bash
-gh issue comment {number} --repo "$GITHUB_ORG/{repo}" --body "## 🤖 Atlas Execution Started
-
-### Plan
-{execution plan}
-
-### Context Used
-- Knowledge: {knowledge sources}
-- Files: {relevant files}
-
----
-*Iteration 1 of {max_iterations}*"
-```
-
-### Step 5: Execute Iteratively
-
-Enter the execution loop:
+**For direct task mode:**
 
 ```
-ITERATION = 1
-MAX_ITERATIONS = --max-iterations or 20 (default)
+Work on the following task:
 
-while ITERATION <= MAX_ITERATIONS:
-    1. Work on the current task from the plan
-    2. Make changes to files
-    3. Run tests if applicable
-    4. Check acceptance criteria
+## Task
+{task description}
 
-    if all_criteria_met():
-        break
+## Knowledge Context
+{knowledge query results}
 
-    ITERATION += 1
+## Codebase Context
+{relevant files and patterns}
 
-    # Post progress every 5 iterations
-    if ITERATION % 5 == 0:
-        post_progress_comment()
+## Verification
+{infer from task or use defaults: tests pass, build succeeds}
+
+## Instructions
+1. Implement the changes described in the task
+2. Follow existing patterns in the codebase
+3. Write tests if applicable
+4. Run verification to ensure completion
+5. Create a PR when done
+
+Completion criteria: The task is fully implemented and verified.
 ```
 
-#### Iteration Actions
+**For issue mode:**
 
-Each iteration should:
-1. Review current state
-2. Identify next action
-3. Execute action (write code, fix bug, add test)
-4. Verify the action succeeded
-5. Update internal state
+```
+Work on GitHub issue #{number}: {title}
 
-Use the TodoWrite tool to track progress within the execution loop.
+## Issue Description
+{issue body}
 
-### Step 6: Verify Completion
+## Knowledge Context
+{knowledge query results}
 
-Before marking complete, verify:
+## Codebase Context
+{relevant files and patterns}
 
-1. **All acceptance criteria checked**: Parse issue body for `- [ ]` items, ensure all are satisfiable
-2. **Tests pass**: Run test suite if present
-3. **Build succeeds**: Run build command if present
-4. **No lint errors**: Run linter if configured
+## Verification Criteria
+{parsed from issue body or defaults}
 
-```bash
-# Example verification commands
-npm test 2>&1 || echo "TESTS_FAILED"
-npm run build 2>&1 || echo "BUILD_FAILED"
-npm run lint 2>&1 || echo "LINT_FAILED"
+## Instructions
+1. Implement the changes described in the issue
+2. Follow existing patterns in the codebase
+3. Write tests if applicable
+4. Run verification to ensure completion
+5. Create a PR when done
+
+When complete, close the issue with: gh issue close {number}
 ```
 
-If verification fails, continue iterating to fix issues.
+### Step 5: Invoke Ralph Wiggum Loop
 
-### Step 7: Create Pull Request
+Use the Skill tool to invoke Ralph Wiggum with the constructed prompt:
 
-If working in a product repo, create a PR:
-
-```bash
-# Create branch for the work
-git checkout -b atlas/issue-{number}
-
-# Stage and commit changes
-git add -A
-git commit -m "feat: {issue title}
-
-Closes #{number}
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# Push and create PR
-git push -u origin atlas/issue-{number}
-
-gh pr create \
-  --repo "$GITHUB_ORG/{repo}" \
-  --title "{issue title}" \
-  --body "## Summary
-{summary of changes}
-
-## Changes
-{list of changed files}
-
-## Testing
-{testing performed}
-
-Closes #{number}
-
----
-*Created by Atlas /execute command*"
+**For direct task mode:**
+```
+/ralph-wiggum:ralph-loop "{constructed_prompt}" --max-iterations {max_iterations} --completion-promise "Task complete: {summary of task}"
 ```
 
-### Step 8: Update Issue
+**For issue mode:**
+```
+/ralph-wiggum:ralph-loop "{constructed_prompt}" --max-iterations {max_iterations} --completion-promise "Issue #{number} is closed"
+```
 
-Post completion comment and close if appropriate:
+**IMPORTANT**: You MUST use the Skill tool to invoke `/ralph-wiggum:ralph-loop`. Do not attempt to implement your own iteration loop.
+
+Example invocations:
+
+```
+# Direct task
+Skill: ralph-wiggum:ralph-loop
+Args: Work on task: Add dark mode toggle... --max-iterations 20 --completion-promise "Task complete: dark mode toggle added"
+
+# Issue-based
+Skill: ralph-wiggum:ralph-loop
+Args: Work on issue #42: Add user authentication... --max-iterations 20 --completion-promise "Issue #42 is closed"
+```
+
+### Step 6: Post-Execution
+
+**For direct task mode:**
+- Summarize what was accomplished
+- List files changed
+- Provide PR link if created
+
+**For issue mode:**
+Post completion comment and close:
 
 ```bash
 gh issue comment {number} --repo "$GITHUB_ORG/{repo}" --body "## ✅ Atlas Execution Complete
@@ -210,66 +228,33 @@ gh issue comment {number} --repo "$GITHUB_ORG/{repo}" --body "## ✅ Atlas Execu
 ### Changes Made
 {list of files modified}
 
-### Verification
-- Tests: {pass/fail}
-- Build: {pass/fail}
-- Lint: {pass/fail}
-
 ### Pull Request
 {PR URL if created}
 
 ---
-*Completed in {iteration_count} iterations*"
+*Completed via Atlas + Ralph Wiggum*"
+
+gh issue close {number}
 ```
-
-If all verification passes and PR is created:
-
-```bash
-gh issue close {number} --repo "$GITHUB_ORG/{repo}" --comment "Completed by Atlas. PR: {pr_url}"
-```
-
-## Execution State
-
-Track execution state in `.atlas/execution-state.json`:
-
-```json
-{
-  "issue_number": 42,
-  "repo": "org/repo",
-  "started_at": "2024-01-15T10:30:00Z",
-  "iteration": 5,
-  "max_iterations": 20,
-  "plan": ["task1", "task2", "task3"],
-  "completed_tasks": ["task1"],
-  "current_task": "task2",
-  "verification": {
-    "tests": null,
-    "build": null,
-    "lint": null
-  }
-}
-```
-
-This allows resuming execution if interrupted.
 
 ## Error Handling
 
-### Stuck Detection
-If the same error occurs 3+ times:
-1. Post a comment describing the blocker
-2. Label issue with `needs-human`
-3. Move to next issue or exit
+### Task Unclear
+If the task description is too vague, ask for clarification before starting.
 
-### Max Iterations Reached
-If max iterations reached without completion:
-1. Post progress comment with current state
-2. List remaining tasks
-3. Ask user whether to continue or pause
+### Issue Not Found
+If the specified issue doesn't exist, inform the user and exit.
 
-### API Failures
-If GitHub API calls fail:
-1. Retry with exponential backoff
-2. After 3 failures, exit gracefully with state saved
+### No Issues Available
+If no issues match the selection criteria, inform the user:
+- Suggest using direct task mode instead
+- Or create issues with `atlas` label
+- Or assign existing issues to themselves
+
+### Ralph Loop Exits Early
+If Ralph exits without completing:
+1. Check what was accomplished
+2. Either resume with the same command or investigate blockers
 
 ## Configuration
 
@@ -281,23 +266,19 @@ product_repos:
   - ~/repos/main-app
 execution:
   max_iterations: 20
-  progress_interval: 5
-  auto_close_issues: true
-  create_prs: true
 ```
 
 ## Best Practices
 
-1. **Start Small**: Test with simple issues first
-2. **Set Limits**: Use `--max-iterations` to prevent runaway execution
-3. **Review Progress**: Check issue comments for execution updates
-4. **Clear Criteria**: Issues with clear acceptance criteria work best
-5. **Label Appropriately**: Use `atlas` label for automation-ready issues
+1. **Be Specific**: Clear task descriptions yield better results
+2. **Include Verification**: Mention how to verify completion (e.g., "tests should pass")
+3. **Reasonable Scope**: One feature/fix per execution
+4. **Set Limits**: Use `--max-iterations` to prevent runaway execution
 
-## Interrupt Handling
+## Dependency
 
-To stop execution:
-1. The loop checks for a `.atlas/stop-execution` file
-2. Create this file to gracefully stop: `touch .atlas/stop-execution`
-3. Execution will complete current iteration and exit
-4. State is saved for potential resume
+This command requires the `ralph-wiggum` plugin to be installed and enabled.
+
+```bash
+claude plugin install ralph-wiggum@claude-code-plugins
+```

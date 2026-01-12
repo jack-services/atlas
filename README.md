@@ -105,18 +105,24 @@ Atlas will:
 
 ### Step 4: Execute Work
 
-Work through issues autonomously:
+Work on tasks directly or from GitHub issues:
 
 ```
-/atlas:execute
+/atlas:execute "Add user avatar upload to the profile page"
+```
+
+Or work through GitHub issues:
+
+```
+/atlas:execute --issue 42
+/atlas:execute  # picks next available issue
 ```
 
 Atlas will:
-1. Pick up the next assigned issue
-2. Gather context and plan implementation
-3. Write code iteratively
-4. Run verification (tests, build)
-5. Create a PR and close the issue
+1. Gather knowledge and codebase context
+2. Invoke Ralph Wiggum's iteration loop
+3. Write code iteratively until verification passes
+4. Create a PR and close the issue
 
 ## Commands
 
@@ -147,18 +153,31 @@ Break down a goal into GitHub issues.
 
 ### `/atlas:execute`
 
-Autonomously work through issues.
+Autonomously work on tasks using Ralph Wiggum's iteration loop.
 
+**Direct task mode (recommended):**
 ```
-/atlas:execute                    # Pick next issue automatically
+/atlas:execute "Add a dark mode toggle to settings"
+/atlas:execute "Fix the password reset bug"
+/atlas:execute "Refactor the auth module to use JWT"
+```
+
+**Issue-based mode:**
+```
 /atlas:execute --issue 42         # Work on specific issue
+/atlas:execute                    # Pick next issue automatically
 /atlas:execute --max-iterations 10  # Limit iterations
 ```
 
-**Issue selection priority:**
+**Issue selection priority (when no task specified):**
 1. Issues assigned to you
 2. Issues labeled `atlas` or `automation`
 3. Issues labeled `good-first-issue`
+
+**Dependency:** Requires the `ralph-wiggum` plugin:
+```bash
+claude plugin install ralph-wiggum@claude-code-plugins
+```
 
 ### `/atlas:update-knowledge <path>`
 
