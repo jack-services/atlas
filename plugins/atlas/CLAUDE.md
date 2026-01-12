@@ -129,13 +129,45 @@ Add new documents to the knowledge repository.
 **When to use:** Adding documentation, specs, or meeting notes.
 
 **What it does:**
-1. Validates the file or URL
-2. Copies to knowledge repo uploads/
-3. Extracts text content
-4. Indexes for semantic search
-5. Commits to knowledge repo
+1. Verifies environment (database, API keys)
+2. Validates the file or URL
+3. Copies to knowledge repo uploads/
+4. Extracts text content (PDFs via pdftotext or Claude native)
+5. Indexes for semantic search (if database configured)
+6. Commits to knowledge repo
+7. Reports indexing status
 
 **Supported formats:** `.md`, `.txt`, `.pdf`, `.csv`
+
+**Note:** If database is not configured, files are stored but not searchable. Run `/atlas check-setup` to verify configuration.
+
+### `/atlas check-setup`
+Verify Atlas configuration and dependencies.
+
+**When to use:** After initial setup, or when troubleshooting issues.
+
+**What it checks:**
+1. Configuration file exists (`~/.atlas/config.yaml`)
+2. Knowledge repository exists and is git-initialized
+3. Database connection and table existence
+4. OpenAI API key (for embeddings)
+5. Required tools (psql, curl, jq, git)
+6. Optional tools (pdftotext)
+
+**Example output:**
+```
+Atlas Setup Check
+=================
+
+[OK] Config file: ~/.atlas/config.yaml
+[OK] Knowledge repo: ~/Projects/company/org (15 files)
+[OK] Database: Connected (3 documents, 47 chunks)
+[OK] OpenAI API Key: sk-p...Xk4m
+[OK] Required tools: psql, curl, jq, git
+[--] Optional: pdftotext not found
+
+Status: READY
+```
 
 ---
 

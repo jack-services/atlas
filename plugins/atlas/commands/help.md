@@ -17,6 +17,7 @@ Atlas connects Claude Code to your company's knowledge repositories and product 
 | Command | Description |
 |---------|-------------|
 | `/atlas:setup` | Interactive wizard to configure Atlas |
+| `/atlas:check-setup` | Verify configuration and dependencies |
 | `/atlas:plan "<goal>"` | Break down a goal into GitHub issues |
 | `/atlas:execute` | Autonomously work through issues |
 | `/atlas:update-knowledge <path>` | Add documents to knowledge base |
