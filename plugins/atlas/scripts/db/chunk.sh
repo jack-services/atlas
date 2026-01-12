@@ -5,8 +5,12 @@
 # Usage:
 #   ./scripts/db/chunk.sh <file>
 #
-# Chunks a markdown document into sections suitable for embedding.
+# Chunks a document into sections suitable for embedding.
 # Output is JSON lines format with chunk metadata.
+#
+# Supported file types:
+#   - .md, .txt - Markdown/text files (native support)
+#   - .pdf - PDF files (requires pdftotext from poppler)
 #
 # Chunking Strategy:
 #   1. Split by headings (# ## ### etc.)
@@ -18,11 +22,16 @@ set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
 error() {
     echo -e "${RED}Error:${NC} $1" >&2
     exit 1
+}
+
+warn() {
+    echo -e "${YELLOW}Warning:${NC} $1" >&2
 }
 
 # Check arguments
@@ -36,8 +45,47 @@ if [[ ! -f "$FILE" ]]; then
     error "File not found: $FILE"
 fi
 
+# Get file extension
+FILE_EXT="${FILE##*.}"
+FILE_EXT="${FILE_EXT,,}"  # lowercase
+
+# Handle PDF files
+if [[ "$FILE_EXT" == "pdf" ]]; then
+    if ! command -v pdftotext &>/dev/null; then
+        error "pdftotext is required for PDF files.
+
+Install with:
+  macOS:  brew install poppler
+  Ubuntu: apt install poppler-utils
+
+Or extract PDF content manually to .md format."
+    fi
+
+    # Create temp file for extracted text
+    TEMP_FILE=$(mktemp --suffix=.txt)
+    trap "rm -f '$TEMP_FILE'" EXIT
+
+    # Extract text from PDF (with layout preservation)
+    if ! pdftotext -layout "$FILE" "$TEMP_FILE" 2>/dev/null; then
+        error "Failed to extract text from PDF: $FILE"
+    fi
+
+    # Check if extraction produced content
+    if [[ ! -s "$TEMP_FILE" ]]; then
+        warn "PDF appears to be empty or image-only: $FILE"
+        exit 0
+    fi
+
+    # Use extracted text file for processing
+    PROCESS_FILE="$TEMP_FILE"
+    ORIGINAL_FILE="$FILE"
+else
+    PROCESS_FILE="$FILE"
+    ORIGINAL_FILE="$FILE"
+fi
+
 # Python script for chunking (more reliable than pure bash)
-python3 - "$FILE" << 'PYTHON_SCRIPT'
+python3 - "$PROCESS_FILE" "$ORIGINAL_FILE" "$FILE_EXT" << 'PYTHON_SCRIPT'
 import sys
 import json
 import hashlib
@@ -49,13 +97,13 @@ def get_file_hash(filepath):
     with open(filepath, 'rb') as f:
         return hashlib.sha256(f.read()).hexdigest()
 
-def chunk_markdown(content):
+def chunk_text(content, is_pdf=False):
     """
-    Chunk markdown content by sections.
+    Chunk text content by sections.
 
     Strategy:
-    - Split on headings (# ## ### etc.)
-    - Keep code blocks intact
+    - Split on headings (# ## ### etc.) for markdown
+    - Split by double newlines for plain text/PDF
     - Split long paragraphs (> 1000 chars)
     - Each chunk includes its heading context
     """
@@ -65,8 +113,17 @@ def chunk_markdown(content):
     # Pattern to match markdown headings
     heading_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
 
+    # For PDFs, also detect common heading patterns (ALL CAPS, numbered sections)
+    if is_pdf:
+        # Add PDF-specific heading detection
+        pdf_heading_pattern = re.compile(r'^([A-Z][A-Z\s]{2,50})$|^(\d+\.[\d.]*\s+.+)$', re.MULTILINE)
+
     # Split content into sections by headings
     sections = re.split(r'(?=^#{1,6}\s+)', content, flags=re.MULTILINE)
+
+    # If no markdown headings found (common in PDFs), split by paragraphs
+    if len(sections) <= 1:
+        sections = re.split(r'\n\s*\n', content)
 
     chunk_index = 0
 
@@ -93,7 +150,7 @@ def chunk_markdown(content):
             chunk_type = 'heading'
         else:
             content_after_heading = section.strip()
-            chunk_type = 'paragraph'
+            chunk_type = 'paragraph' if not is_pdf else 'pdf_section'
 
         # Build context from heading hierarchy
         context = ' > '.join([current_headers[l] for l in sorted(current_headers.keys())])
@@ -150,14 +207,19 @@ def chunk_markdown(content):
     return chunks
 
 def main():
-    filepath = sys.argv[1]
-    path = Path(filepath)
+    process_filepath = sys.argv[1]  # File to read (may be temp file for PDFs)
+    original_filepath = sys.argv[2]  # Original file path (for metadata)
+    file_ext = sys.argv[3]  # File extension
 
-    with open(filepath, 'r', encoding='utf-8') as f:
+    path = Path(original_filepath)
+    is_pdf = file_ext == 'pdf'
+
+    with open(process_filepath, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
-    file_hash = get_file_hash(filepath)
-    chunks = chunk_markdown(content)
+    # Use original file for hash (not temp extracted text)
+    file_hash = get_file_hash(original_filepath)
+    chunks = chunk_text(content, is_pdf=is_pdf)
 
     # Output as JSON lines
     for chunk in chunks:
@@ -168,7 +230,8 @@ def main():
             'chunk_type': chunk['type'],
             'chunk_text': chunk['text'],
             'metadata': {
-                'context': chunk['context']
+                'context': chunk['context'],
+                'file_type': file_ext
             }
         }
         print(json.dumps(output))

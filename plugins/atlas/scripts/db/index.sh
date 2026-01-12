@@ -11,7 +11,7 @@
 #   path          Path to knowledge repo (default: from config)
 #
 # The pipeline:
-#   1. Scans for documents (.md, .txt)
+#   1. Scans for documents (.md, .txt, .pdf)
 #   2. Checks file hashes for changes (incremental)
 #   3. Chunks documents into sections
 #   4. Generates embeddings via OpenAI
@@ -285,7 +285,7 @@ main() {
         else
             ((files_skipped++))
         fi
-    done < <(find "$knowledge_path" -type f \( -name "*.md" -o -name "*.txt" \) -not -path "*/.git/*" -print0)
+    done < <(find "$knowledge_path" -type f \( -name "*.md" -o -name "*.txt" -o -name "*.pdf" \) -not -path "*/.git/*" -print0)
 
     echo ""
     echo "================================="
