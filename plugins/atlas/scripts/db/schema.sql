@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS atlas_embeddings (
     chunk_type VARCHAR(50) NOT NULL,         -- 'heading', 'paragraph', 'code', etc.
     chunk_text TEXT NOT NULL,                -- The actual text content
 
-    -- Embedding vector (1536 dimensions for OpenAI ada-002)
+    -- Embedding vector (1536 dimensions for OpenAI text-embedding-3-small)
     embedding vector(1536) NOT NULL,
 
     -- Metadata
