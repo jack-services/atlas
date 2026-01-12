@@ -34,6 +34,72 @@ Ask if the user wants to configure a vector database for semantic search:
 - If yes, collect the PostgreSQL connection URL
 - Recommend using an environment variable for security
 
+### Step 5.5: Initialize Database (if URL provided)
+
+If the user provided a database URL, test and initialize it:
+
+**1. Test the connection:**
+```bash
+DB_URL="${ATLAS_DATABASE_URL:-$USER_PROVIDED_URL}"
+if psql "$DB_URL" -c "SELECT 1" &>/dev/null; then
+    echo "Database connection: OK"
+else
+    echo "Database connection: FAILED"
+    echo "Please check your connection URL and try again."
+    # Offer to continue without database or re-enter URL
+fi
+```
+
+**2. Check for pgvector extension:**
+```bash
+if psql "$DB_URL" -t -c "SELECT 1 FROM pg_extension WHERE extname = 'vector'" | grep -q 1; then
+    echo "pgvector extension: INSTALLED"
+else
+    echo "pgvector extension: NOT FOUND"
+    echo "Attempting to create extension..."
+    psql "$DB_URL" -c "CREATE EXTENSION IF NOT EXISTS vector"
+fi
+```
+
+**3. Check if table exists:**
+```bash
+if psql "$DB_URL" -c "SELECT 1 FROM atlas_embeddings LIMIT 1" &>/dev/null; then
+    echo "Database table: EXISTS"
+    # Show current stats
+    psql "$DB_URL" -c "SELECT * FROM atlas_embedding_stats"
+else
+    echo "Database table: NOT FOUND"
+fi
+```
+
+**4. Offer to run migration if table missing:**
+
+Use AskUserQuestion:
+```
+The atlas_embeddings table doesn't exist yet. Would you like to create it now?
+
+Options:
+- Yes, create the table (Recommended)
+- No, I'll do it later
+```
+
+**5. If user agrees, run migration:**
+```bash
+ATLAS_PLUGIN_DIR="path/to/plugins/atlas"
+"$ATLAS_PLUGIN_DIR/scripts/db/migrate.sh"
+```
+
+**6. Verify and report:**
+```bash
+if psql "$DB_URL" -c "SELECT 1 FROM atlas_embeddings LIMIT 1" &>/dev/null; then
+    echo "Database initialized successfully!"
+    echo "You can now index knowledge with: /atlas update-knowledge <path>"
+else
+    echo "Migration may have failed. Check the output above."
+    echo "You can run it manually later: ./plugins/atlas/scripts/db/migrate.sh"
+fi
+```
+
 ### Step 6: Write Configuration
 Create the `~/.atlas/config.yaml` file with the collected information.
 Use environment variable placeholders for sensitive values.
@@ -42,6 +108,43 @@ Use environment variable placeholders for sensitive values.
 - Display the created configuration
 - Verify GitHub access works
 - Confirm setup is complete
+
+### Step 8: Next Steps
+
+After successful setup, display helpful next steps:
+
+```
+Atlas Setup Complete!
+=====================
+
+Configuration saved to: ~/.atlas/config.yaml
+
+Next Steps:
+-----------
+
+1. Add knowledge to your repository:
+   /atlas update-knowledge ~/path/to/document.md
+
+2. Search your knowledge base:
+   /atlas search "your query"
+
+3. Plan work from a goal:
+   /atlas plan "Add user authentication"
+
+4. Check configuration anytime:
+   /atlas check-setup
+
+Need help? Run /atlas help
+```
+
+If database was not configured:
+```
+Note: Semantic search is not enabled.
+To enable it later:
+1. Set ATLAS_DATABASE_URL environment variable
+2. Run: ./plugins/atlas/scripts/db/migrate.sh
+3. Index your knowledge: /atlas update-knowledge <path>
+```
 
 ## Implementation
 
