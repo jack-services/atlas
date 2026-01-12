@@ -6,7 +6,7 @@
 #   echo '{"chunk_text": "..."}' | ./scripts/db/embed.sh
 #   ./scripts/db/chunk.sh file.md | ./scripts/db/embed.sh
 #
-# Generates embeddings using OpenAI's text-embedding-ada-002 model.
+# Generates embeddings using OpenAI's text-embedding-3-small model.
 # Input: JSON lines with chunk_text field
 # Output: JSON lines with embedding field added
 #
@@ -76,7 +76,7 @@ while IFS= read -r line; do
         --arg text "$text" \
         '{
             "input": $text,
-            "model": "text-embedding-ada-002"
+            "model": "text-embedding-3-small"
         }')
 
     # Call OpenAI API

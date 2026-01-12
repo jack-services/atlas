@@ -106,7 +106,7 @@ request_body=$(jq -n \
     --arg text "$QUERY" \
     '{
         "input": $text,
-        "model": "text-embedding-ada-002"
+        "model": "text-embedding-3-small"
     }')
 
 response=$(curl -s -X POST "https://api.openai.com/v1/embeddings" \
