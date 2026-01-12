@@ -105,24 +105,24 @@ Atlas will:
 
 ### Step 4: Execute Work
 
-Work on tasks directly or from GitHub issues:
+Search for issues and work on them:
 
 ```
-/atlas:execute "Add user avatar upload to the profile page"
-```
-
-Or work through GitHub issues:
-
-```
-/atlas:execute --issue 42
-/atlas:execute  # picks next available issue
+/atlas:execute "authentication"
 ```
 
 Atlas will:
-1. Gather knowledge and codebase context
-2. Invoke Ralph Wiggum's iteration loop
-3. Write code iteratively until verification passes
-4. Create a PR and close the issue
+1. Search open GitHub issues matching your query
+2. Present results and let you select which to work on
+3. Gather knowledge and codebase context
+4. Invoke Ralph Wiggum's iteration loop
+5. Create a PR and close the issue
+
+You can also work on a specific issue directly:
+
+```
+/atlas:execute --issue 42
+```
 
 ## Commands
 
@@ -153,23 +153,24 @@ Break down a goal into GitHub issues.
 
 ### `/atlas:execute`
 
-Autonomously work on tasks using Ralph Wiggum's iteration loop.
+Search for and work through GitHub issues using Ralph Wiggum's iteration loop.
 
-**Direct task mode (recommended):**
+**Search mode (recommended):**
 ```
-/atlas:execute "Add a dark mode toggle to settings"
-/atlas:execute "Fix the password reset bug"
-/atlas:execute "Refactor the auth module to use JWT"
-```
-
-**Issue-based mode:**
-```
-/atlas:execute --issue 42         # Work on specific issue
-/atlas:execute                    # Pick next issue automatically
-/atlas:execute --max-iterations 10  # Limit iterations
+/atlas:execute "authentication"     # Find and work on auth-related issues
+/atlas:execute "fix login bug"      # Search for login bug issues
+/atlas:execute "dark mode"          # Find dark mode issues
 ```
 
-**Issue selection priority (when no task specified):**
+Atlas will search open issues, present matches, and let you select which to work on.
+
+**Direct issue mode:**
+```
+/atlas:execute --issue 42           # Work on specific issue
+/atlas:execute                      # Pick next assigned/labeled issue
+```
+
+**Issue selection priority (when no query specified):**
 1. Issues assigned to you
 2. Issues labeled `atlas` or `automation`
 3. Issues labeled `good-first-issue`

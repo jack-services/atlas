@@ -107,34 +107,38 @@ Transforms a high-level goal into actionable GitHub issues.
 /atlas plan "Add user authentication with OAuth"
 ```
 
-### `/atlas execute "<task>" [--issue <number>] [--max-iterations <n>]`
-Autonomous task execution powered by Ralph Wiggum's iteration loop.
+### `/atlas execute "<search query>" [--issue <number>] [--max-iterations <n>]`
+Search for and work through GitHub issues using Ralph Wiggum's iteration loop.
 
-**When to use:** Working on any task - either described directly or from GitHub issues.
+**When to use:** Working on issues matching a description, or specific issues.
 
 **Two execution modes:**
 
-**Mode 1: Direct Task Description (Recommended)**
+**Mode 1: Search Mode (Recommended)**
 ```
-/atlas:execute "Add a dark mode toggle to settings"
-/atlas:execute "Fix the login timeout bug"
+/atlas:execute "authentication"     # Find auth-related issues
+/atlas:execute "fix login bug"      # Search for login bugs
+/atlas:execute "dark mode"          # Find dark mode issues
 ```
 
-**Mode 2: GitHub Issue-Based**
+Atlas searches issues, presents matches, and lets you select which to work on.
+
+**Mode 2: Direct Issue Mode**
 ```
 /atlas:execute --issue 42    # Specific issue
-/atlas:execute               # Next available issue
+/atlas:execute               # Next available issue by priority
 ```
 
 **What it does:**
-1. Gathers knowledge and codebase context for the task
-2. Invokes `/ralph-wiggum:ralph-loop` with full context
-3. Ralph iterates until verification passes
-4. Creates PR and closes issue (if issue-based)
+1. Searches GitHub issues matching your query
+2. Presents matches for you to select
+3. Gathers knowledge and codebase context
+4. Invokes `/ralph-wiggum:ralph-loop` with full context
+5. Creates PR and closes issue on completion
 
 **Dependency:** Requires the `ralph-wiggum` plugin to be installed.
 
-**Priority order for issue selection (when no task/issue specified):**
+**Priority order for issue selection (when no query specified):**
 1. Issues assigned to current user
 2. Issues labeled `atlas` or `automation`
 3. Issues labeled `good-first-issue`
