@@ -232,12 +232,40 @@ verification:
 
 ### Environment Variables
 
-Use `${VAR_NAME}` syntax for environment variables:
+Use `${VAR_NAME}` syntax for environment variables in config files:
 
 ```yaml
 vector_db:
   url: ${ATLAS_DATABASE_URL}
 ```
+
+Atlas automatically loads environment variables from `.env` files in these locations (in order):
+
+1. `~/.atlas/.env` - User-level configuration
+2. Atlas repository `.env` - Project-level configuration
+3. Current directory `.env` - Local overrides
+
+**Setting up your .env file:**
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your credentials
+$EDITOR .env
+```
+
+**Example .env file:**
+
+```bash
+# PostgreSQL connection for vector search
+ATLAS_DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+
+# OpenAI API key for embeddings (optional)
+OPENAI_API_KEY=sk-...
+```
+
+> **Security Note:** The `.env` file is gitignored and should never be committed. Use `.env.example` as a template.
 
 ## Troubleshooting
 

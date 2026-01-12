@@ -15,6 +15,11 @@
 
 set -euo pipefail
 
+# Load environment variables from .env files
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=env-loader.sh
+source "$SCRIPT_DIR/env-loader.sh"
+
 CONFIG_FILE="${ATLAS_CONFIG_FILE:-$HOME/.atlas/config.yaml}"
 
 # Colors for output
